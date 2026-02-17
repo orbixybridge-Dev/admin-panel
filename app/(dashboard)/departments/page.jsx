@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 
 export default function DepartmentsPage() {
   const dispatch = useAppDispatch();
-  const { departments, loading, error } = useAppSelector((state) => state.departments);
+  const { departments = [], loading = false, error = null, filters = { search: '', status: 'all' } } = useAppSelector((state) => state.departments || {});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false);
@@ -33,8 +33,13 @@ export default function DepartmentsPage() {
   const lastErrorRef = useRef(null);
 
   useEffect(() => {
-    // Don't fetch if already fetched or loading
-    if (hasFetchedRef.current || loading) {
+    // Reset refs when component mounts (fresh page load)
+    hasFetchedRef.current = false;
+    errorRetryCountRef.current = 0;
+    lastErrorRef.current = null;
+
+    // Don't fetch if already loading
+    if (loading) {
       return;
     }
 
@@ -44,7 +49,7 @@ export default function DepartmentsPage() {
     }
 
     // Only fetch if we don't have data
-    if (departments.length === 0) {
+    if (!departments || departments.length === 0) {
       hasFetchedRef.current = true;
       if (error) {
         errorRetryCountRef.current += 1;
@@ -53,7 +58,7 @@ export default function DepartmentsPage() {
       }
       dispatch(fetchAllDepartments());
     }
-  }, [dispatch, departments.length, loading, error]);
+  }, [dispatch]); // Only run on mount
 
   // Show error toast when error occurs (only once per error)
   useEffect(() => {
@@ -65,6 +70,9 @@ export default function DepartmentsPage() {
 
   // Filter departments
   const filteredDepartments = useMemo(() => {
+    if (!departments || !Array.isArray(departments)) {
+      return [];
+    }
     let filtered = [...departments];
 
     // Search filter

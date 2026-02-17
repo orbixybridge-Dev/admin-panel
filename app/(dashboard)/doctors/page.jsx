@@ -14,8 +14,16 @@ import toast from 'react-hot-toast';
 
 export default function DoctorsPage() {
   const dispatch = useAppDispatch();
-  const { doctors, loading, error, totalElements, totalPages, currentPage, pageSize, filters } =
-    useAppSelector((state) => state.verifiedDoctors);
+  const { 
+    doctors = [], 
+    loading = false, 
+    error = null, 
+    totalElements = 0, 
+    totalPages = 0, 
+    currentPage = 0, 
+    pageSize = 10, 
+    filters = { search: '', status: 'all' } 
+  } = useAppSelector((state) => state.verifiedDoctors || {});
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const lastFetchRef = useRef({ page: null, size: null });
@@ -30,7 +38,6 @@ export default function DoctorsPage() {
     }
 
     // Don't retry if there's an error (prevents infinite loops)
-    // Allow retry only if error retry count is less than 2
     if (error && errorRetryCountRef.current >= 2) {
       return;
     }
@@ -52,6 +59,15 @@ export default function DoctorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize]); // Only depend on page/pageSize, check loading inside
 
+  // Reset refs on unmount to prevent stale state
+  useEffect(() => {
+    return () => {
+      lastFetchRef.current = { page: null, size: null };
+      errorRetryCountRef.current = 0;
+      lastErrorRef.current = null;
+    };
+  }, []);
+
   // Show error toast when error occurs (only once per error)
   useEffect(() => {
     if (error && typeof error === 'string' && lastErrorRef.current !== error) {
@@ -62,6 +78,9 @@ export default function DoctorsPage() {
 
   // Filter doctors
   const filteredDoctors = useMemo(() => {
+    if (!doctors || !Array.isArray(doctors)) {
+      return [];
+    }
     let filtered = [...doctors];
 
     // Search filter

@@ -22,29 +22,42 @@ export default function Table({ columns, data, className = '' }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {data.length === 0 ? (
+            {!data || !Array.isArray(data) || data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
                   No data available
                 </td>
               </tr>
             ) : (
-              data.map((row) => (
-                <tr key={row.id} className="hover:bg-primary-50/50 transition-colors">
-                  {columns.map((column, index) => (
-                    <td
-                      key={index}
-                      className={`px-6 py-4 whitespace-nowrap text-sm text-gray-700 ${
-                        column.className || ''
-                      }`}
-                    >
-                      {typeof column.accessor === 'function'
-                        ? column.accessor(row)
-                        : String(row[column.accessor])}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              data.map((row, rowIndex) => {
+                if (!row) return null;
+                return (
+                  <tr key={row.id || row.doctorId || row.departmentId || row.qualificationId || rowIndex} className="hover:bg-primary-50/50 transition-colors">
+                    {columns.map((column, index) => {
+                      try {
+                        return (
+                          <td
+                            key={index}
+                            className={`px-6 py-4 whitespace-nowrap text-sm text-gray-700 ${
+                              column.className || ''
+                            }`}
+                          >
+                            {typeof column.accessor === 'function'
+                              ? column.accessor(row) || '-'
+                              : String(row[column.accessor] || '-')}
+                          </td>
+                        );
+                      } catch (error) {
+                        return (
+                          <td key={index} className="px-6 py-4 text-sm text-gray-500">
+                            -
+                          </td>
+                        );
+                      }
+                    })}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

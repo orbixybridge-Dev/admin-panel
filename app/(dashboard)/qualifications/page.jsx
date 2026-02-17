@@ -17,8 +17,8 @@ import toast from 'react-hot-toast';
 
 export default function QualificationsPage() {
   const dispatch = useAppDispatch();
-  const { qualifications, loading, error, filters } = useAppSelector(
-    (state) => state.qualifications
+  const { qualifications = [], loading = false, error = null, filters = { search: '' } } = useAppSelector(
+    (state) => state.qualifications || {}
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -31,8 +31,13 @@ export default function QualificationsPage() {
   const lastErrorRef = useRef(null);
 
   useEffect(() => {
-    // Don't fetch if already fetched or loading
-    if (hasFetchedRef.current || loading) {
+    // Reset refs when component mounts (fresh page load)
+    hasFetchedRef.current = false;
+    errorRetryCountRef.current = 0;
+    lastErrorRef.current = null;
+
+    // Don't fetch if already loading
+    if (loading) {
       return;
     }
 
@@ -42,7 +47,7 @@ export default function QualificationsPage() {
     }
 
     // Only fetch if we don't have data
-    if (qualifications.length === 0) {
+    if (!qualifications || qualifications.length === 0) {
       hasFetchedRef.current = true;
       if (error) {
         errorRetryCountRef.current += 1;
@@ -51,7 +56,7 @@ export default function QualificationsPage() {
       }
       dispatch(fetchAllQualifications());
     }
-  }, [dispatch, qualifications.length, loading, error]);
+  }, [dispatch]); // Only run on mount
 
   // Show error toast when error occurs (only once per error)
   useEffect(() => {
@@ -63,6 +68,9 @@ export default function QualificationsPage() {
 
   // Filter qualifications
   const filteredQualifications = useMemo(() => {
+    if (!qualifications || !Array.isArray(qualifications)) {
+      return [];
+    }
     let filtered = [...qualifications];
 
     // Search filter
