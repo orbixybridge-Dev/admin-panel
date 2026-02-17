@@ -5,6 +5,10 @@ import patientsReducer from './slices/patientsSlice';
 import doctorsReducer from './slices/doctorsSlice';
 import paymentsReducer from './slices/paymentsSlice';
 import notificationsReducer from './slices/notificationsSlice';
+import departmentsReducer from './slices/departmentsSlice';
+import qualificationsReducer from './slices/qualificationsSlice';
+import doctorVerificationReducer from './slices/doctorVerificationSlice';
+import verifiedDoctorsReducer from './slices/verifiedDoctorsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +18,10 @@ export const store = configureStore({
     doctors: doctorsReducer,
     payments: paymentsReducer,
     notifications: notificationsReducer,
+    departments: departmentsReducer,
+    qualifications: qualificationsReducer,
+    doctorVerification: doctorVerificationReducer,
+    verifiedDoctors: verifiedDoctorsReducer,
   },
 });
 

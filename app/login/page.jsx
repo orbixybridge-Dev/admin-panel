@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { login } from '@/store/slices/authSlice';
-import { Stethoscope, Lock, User, AlertCircle } from 'lucide-react';
+import { Stethoscope, Lock, Mail, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated, loading, error } = useAppSelector((state) => state.auth);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -22,13 +22,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setShowError(false);
     
     try {
-      await dispatch(login({ username, password })).unwrap();
+      await dispatch(login({ email, password })).unwrap();
+      toast.success('Login successful!');
       router.push('/');
     } catch (err) {
-      setShowError(true);
+      toast.error(err || 'Invalid email or password');
     }
   };
 
@@ -49,31 +49,23 @@ export default function LoginPage() {
         {/* Login Card */}
         <div className="bg-white rounded-2xl soft-shadow-lg p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Message */}
-            {showError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <p className="text-sm text-red-600">{error || 'Invalid username or password'}</p>
-              </div>
-            )}
-
-            {/* Username Field */}
+            {/* Email Field */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                  placeholder="Enter your username"
+                  placeholder="Enter your email"
                 />
               </div>
             </div>
@@ -118,13 +110,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Info */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-center text-gray-500">
-              Default credentials: <span className="font-mono font-semibold">admin / admin</span>
-            </p>
-          </div>
         </div>
 
         {/* Footer */}

@@ -1,100 +1,191 @@
 'use client';
 
-import { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { updateStatusLocal } from '@/store/slices/doctorsSlice';
-import Table from '@/components/Table';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  fetchVerifiedDoctors,
+  setFilters,
+  setPage,
+} from '@/store/slices/verifiedDoctorsSlice';
 import Modal from '@/components/Modal';
-import { Eye, User, FileText } from 'lucide-react';
+import Table from '@/components/Table';
+import { Eye, Search, ChevronLeft, ChevronRight, User, Filter } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function DoctorsPage() {
   const dispatch = useAppDispatch();
-  const doctors = useAppSelector((state) => state.doctors.doctors);
+  const { doctors, loading, totalElements, totalPages, currentPage, pageSize, filters } =
+    useAppSelector((state) => state.verifiedDoctors);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const lastFetchRef = useRef({ page: null, size: null });
 
-  const handleView = (doctor) => {
+  // Fetch data - only when page/pageSize actually changes
+  useEffect(() => {
+    // Skip if already loading (prevents duplicate calls)
+    if (loading) {
+      return;
+    }
+
+    // Check if we need to fetch (page or size changed, or first mount)
+    const needsFetch = 
+      lastFetchRef.current.page !== currentPage || 
+      lastFetchRef.current.size !== pageSize;
+
+    if (needsFetch) {
+      lastFetchRef.current = { page: currentPage, size: pageSize };
+      dispatch(fetchVerifiedDoctors({ page: currentPage, size: pageSize }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize]); // Only depend on page/pageSize, check loading inside
+
+  // Filter doctors
+  const filteredDoctors = useMemo(() => {
+    let filtered = [...doctors];
+
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (doctor) =>
+          doctor.name?.toLowerCase().includes(searchLower) ||
+          doctor.email?.toLowerCase().includes(searchLower) ||
+          doctor.registrationNumber?.toLowerCase().includes(searchLower) ||
+          doctor.mobileNumber?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter((doctor) => doctor.status === filters.status);
+    }
+
+    return filtered;
+  }, [doctors, filters]);
+
+  const handleViewDetails = (doctor) => {
     setSelectedDoctor(doctor);
-    setIsModalOpen(true);
+    setIsDetailsModalOpen(true);
   };
 
-  const handleStatusChange = (doctorId, newStatus) => {
-    dispatch(updateStatusLocal({ doctorId, status: newStatus }));
+  const handlePageChange = (newPage) => {
+    dispatch(setPage(newPage));
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Online':
+      case 'ONLINE':
         return 'bg-green-500';
-      case 'Busy':
+      case 'BUSY':
         return 'bg-yellow-500';
-      case 'Offline':
+      case 'OFFLINE':
         return 'bg-gray-400';
       default:
         return 'bg-gray-400';
     }
   };
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'ONLINE':
+        return 'Online';
+      case 'BUSY':
+        return 'Busy';
+      case 'OFFLINE':
+        return 'Offline';
+      default:
+        return status || '-';
+    }
+  };
+
   const columns = [
     {
-      header: 'Serial No',
-      accessor: (row) => row.serialNo,
+      header: 'ID',
+      accessor: 'doctorId',
+      className: 'w-20',
     },
     {
-      header: 'Doctor Name',
+      header: 'Doctor',
       accessor: (row) => (
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-purple-400 rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-white" />
+        <div className="flex items-center space-x-3">
+          {row.profilePicture ? (
+            <img
+              src={row.profilePicture}
+              alt={row.name}
+              className="w-10 h-10 rounded-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div
+            className={`w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 flex items-center justify-center ${
+              row.profilePicture ? 'hidden' : ''
+            }`}
+          >
+            <User className="w-5 h-5 text-white" />
           </div>
-          <span className="font-medium">{row.name}</span>
+          <div>
+            <p className="font-medium text-gray-900">{row.name}</p>
+            <p className="text-xs text-gray-500">{row.email}</p>
+          </div>
         </div>
       ),
     },
     {
-      header: 'Mobile Number',
-      accessor: (row) => row.mobile,
+      header: 'Registration #',
+      accessor: (row) => (
+        <span className="font-mono text-sm">{row.registrationNumber || '-'}</span>
+      ),
+    },
+    {
+      header: 'Mobile',
+      accessor: 'mobileNumber',
+    },
+    {
+      header: 'Department',
+      accessor: (row) => row.department || '-',
+    },
+    {
+      header: 'Qualification',
+      accessor: (row) => row.qualification || '-',
     },
     {
       header: 'Status',
       accessor: (row) => (
         <div className="flex items-center space-x-2">
           <div className={`w-3 h-3 rounded-full ${getStatusColor(row.status)}`}></div>
-          <span className="font-medium">{row.status}</span>
-          <select
-            value={row.status}
-            onChange={(e) => handleStatusChange(row.id, e.target.value)}
-            className="ml-2 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <option value="Offline">Offline</option>
-            <option value="Online">Online</option>
-            <option value="Busy">Busy</option>
-          </select>
+          <span className="text-sm font-medium">{getStatusLabel(row.status)}</span>
         </div>
       ),
     },
     {
-      header: 'Total Attended Calls',
-      accessor: (row) => (
-        <span className="font-semibold text-primary-600">{row.totalAttendedCalls}</span>
-      ),
-    },
-    {
-      header: 'Bill Generated',
-      accessor: (row) => (
-        <span className="font-semibold text-purple-600">{row.billGenerated}</span>
-      ),
+      header: 'Verified Date',
+      accessor: (row) => formatDate(row.verifiedAt),
     },
     {
       header: 'Actions',
       accessor: (row) => (
         <button
-          onClick={() => handleView(row)}
-          className="flex items-center space-x-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+          onClick={() => handleViewDetails(row)}
+          className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+          title="View Details"
         >
           <Eye className="w-4 h-4" />
-          <span>View</span>
         </button>
       ),
     },
@@ -102,17 +193,101 @@ export default function DoctorsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Doctors</h1>
-        <p className="text-gray-600 mt-2">Manage all registered doctors</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Doctors</h1>
+          <p className="text-gray-600 mt-1">
+            Manage all verified doctors ({totalElements} total)
+          </p>
+        </div>
       </div>
 
-      <Table columns={columns} data={doctors} />
+      {/* Filters */}
+      <div className="bg-white rounded-xl soft-shadow-lg p-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, email, registration number, or mobile..."
+              value={filters.search}
+              onChange={(e) => dispatch(setFilters({ search: e.target.value }))}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filters.status}
+              onChange={(e) => dispatch(setFilters({ status: e.target.value }))}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="ONLINE">Online</option>
+              <option value="OFFLINE">Offline</option>
+              <option value="BUSY">Busy</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
+      {/* Table */}
+      {loading ? (
+        <div className="bg-white rounded-xl soft-shadow-lg p-12 text-center">
+          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading doctors...</p>
+        </div>
+      ) : filteredDoctors.length === 0 ? (
+        <div className="bg-white rounded-xl soft-shadow-lg p-12 text-center">
+          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">No verified doctors found</p>
+          <p className="text-gray-500 text-sm mt-2">
+            {filters.search || filters.status !== 'all'
+              ? 'Try adjusting your filters'
+              : 'No doctors have been verified yet'}
+          </p>
+        </div>
+      ) : (
+        <>
+          <Table columns={columns} data={filteredDoctors} />
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white rounded-xl soft-shadow-lg p-4">
+              <div className="text-sm text-gray-600">
+                Showing {currentPage * pageSize + 1} to{' '}
+                {Math.min((currentPage + 1) * pageSize, totalElements)} of {totalElements} doctors
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Doctor Details Modal */}
       <Modal
-        isOpen={isModalOpen}
+        isOpen={isDetailsModalOpen}
         onClose={() => {
-          setIsModalOpen(false);
+          setIsDetailsModalOpen(false);
           setSelectedDoctor(null);
         }}
         title="Doctor Details"
@@ -120,23 +295,35 @@ export default function DoctorsPage() {
       >
         {selectedDoctor && (
           <div className="space-y-6">
-            {/* Photo Placeholder */}
+            {/* Profile Picture */}
             <div className="flex justify-center">
-              <div className="w-32 h-32 bg-gradient-to-br from-primary-400 to-purple-400 rounded-full flex items-center justify-center">
+              {selectedDoctor.profilePicture ? (
+                <img
+                  src={selectedDoctor.profilePicture}
+                  alt={selectedDoctor.name}
+                  className="w-32 h-32 rounded-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div
+                className={`w-32 h-32 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 flex items-center justify-center ${
+                  selectedDoctor.profilePicture ? 'hidden' : ''
+                }`}
+              >
                 <User className="w-16 h-16 text-white" />
               </div>
             </div>
 
-            {/* Details */}
+            {/* Details Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-600">Doctor Name</label>
-                <p className="text-lg font-semibold text-gray-900 mt-1">{selectedDoctor.name}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-600">Mobile</label>
-                <p className="text-gray-900 mt-1">{selectedDoctor.mobile}</p>
+                <label className="text-sm font-medium text-gray-600">Full Name</label>
+                <p className="text-lg font-semibold text-gray-900 mt-1">
+                  {selectedDoctor.name}
+                </p>
               </div>
 
               <div>
@@ -145,56 +332,87 @@ export default function DoctorsPage() {
               </div>
 
               <div>
+                <label className="text-sm font-medium text-gray-600">Mobile Number</label>
+                <p className="text-gray-900 mt-1">{selectedDoctor.mobileNumber}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Registration Number</label>
+                <p className="font-mono text-gray-900 mt-1">
+                  {selectedDoctor.registrationNumber || '-'}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Department</label>
+                <p className="text-gray-900 mt-1">{selectedDoctor.department || '-'}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Qualification</label>
+                <p className="text-gray-900 mt-1">{selectedDoctor.qualification || '-'}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Experience</label>
+                <p className="text-gray-900 mt-1">{selectedDoctor.experience || '-'}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Hospital Location</label>
+                <p className="text-gray-900 mt-1">{selectedDoctor.hospitalLocation || '-'}</p>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium text-gray-600">Status</label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(selectedDoctor.status)}`}></div>
-                  <p className="text-gray-900 font-medium">{selectedDoctor.status}</p>
-                </div>
+                <p className="text-gray-900 mt-1">
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${getStatusColor(selectedDoctor.status)}`}
+                    ></div>
+                    <span className="font-medium">{getStatusLabel(selectedDoctor.status)}</span>
+                  </div>
+                </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-600">Total Attended Calls</label>
-                <p className="text-gray-900 mt-1 font-semibold">{selectedDoctor.totalAttendedCalls}</p>
+                <label className="text-sm font-medium text-gray-600">Verification Status</label>
+                <p className="text-gray-900 mt-1">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedDoctor.isVerified
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {selectedDoctor.isVerified ? 'Verified' : 'Not Verified'}
+                  </span>
+                </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-600">Bill Generated</label>
-                <p className="text-gray-900 mt-1 font-semibold">{selectedDoctor.billGenerated}</p>
-              </div>
-            </div>
-
-            {/* Documents */}
-            <div>
-              <label className="text-sm font-medium text-gray-600">Documents</label>
-              <div className="mt-2 space-y-2">
-                {selectedDoctor.documents.map((doc, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg"
+                <label className="text-sm font-medium text-gray-600">Active Status</label>
+                <p className="text-gray-900 mt-1">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedDoctor.isActive
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
                   >
-                    <FileText className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm text-gray-700">{doc}</span>
-                  </div>
-                ))}
+                    {selectedDoctor.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </p>
               </div>
-            </div>
 
-            {/* Attended Calls */}
-            <div>
-              <label className="text-sm font-medium text-gray-600">Recent Attended Calls</label>
-              <div className="mt-2 space-y-2">
-                {selectedDoctor.attendedCalls.map((call) => (
-                  <div
-                    key={call.id}
-                    className="p-3 bg-gray-50 rounded-lg flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">{call.patientName}</p>
-                      <p className="text-sm text-gray-600">{call.date} • {call.duration}</p>
-                    </div>
-                    <p className="font-semibold text-primary-600">${call.amount}</p>
-                  </div>
-                ))}
+              <div>
+                <label className="text-sm font-medium text-gray-600">Registration Date</label>
+                <p className="text-gray-900 mt-1">{formatDate(selectedDoctor.createdAt)}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600">Verified Date</label>
+                <p className="text-gray-900 mt-1">{formatDate(selectedDoctor.verifiedAt)}</p>
               </div>
             </div>
           </div>

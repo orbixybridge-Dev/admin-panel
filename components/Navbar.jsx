@@ -11,12 +11,18 @@ export default function Navbar() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
   const notifications = useAppSelector((state) => state.notifications.notifications);
   const unreadCount = notifications.filter(n => n.status === 'Unread').length;
 
   const handleLogout = async () => {
-    await dispatch(logout());
-    router.push('/login');
+    try {
+      await dispatch(logout()).unwrap();
+      router.push('/login');
+    } catch (error) {
+      // Even if API call fails, clear local storage and redirect
+      router.push('/login');
+    }
   };
 
   return (
@@ -61,8 +67,10 @@ export default function Navbar() {
             {showProfileDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg soft-shadow-lg border border-gray-100 py-2 z-50">
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900">Admin User</p>
-                  <p className="text-xs text-gray-500">admin@heydoctor.com</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {user?.name || user?.email || 'Admin User'}
+                  </p>
+                  <p className="text-xs text-gray-500">{user?.email || 'admin@heydoctor.com'}</p>
                 </div>
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 transition-colors">
                   Profile Settings
