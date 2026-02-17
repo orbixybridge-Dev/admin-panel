@@ -12,23 +12,31 @@ import {
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Table from '@/components/Table';
-import { CheckCircle, XCircle, Eye, Search, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Search, ChevronLeft, ChevronRight, User, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { clearError } from '@/store/slices/doctorVerificationSlice';
 
 export default function DoctorActivationPage() {
   const dispatch = useAppDispatch();
-  const { doctors, loading, totalElements, totalPages, currentPage, pageSize, filters } =
+  const { doctors, loading, error, totalElements, totalPages, currentPage, pageSize, filters } =
     useAppSelector((state) => state.doctorVerification);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const lastFetchRef = useRef({ page: null, size: null });
+  const errorRetryCountRef = useRef(0);
 
   // Fetch data - only when page/pageSize actually changes
   useEffect(() => {
     // Skip if already loading (prevents duplicate calls)
     if (loading) {
+      return;
+    }
+
+    // Don't retry if there's an error (prevents infinite loops)
+    // Allow retry only if error retry count is less than 2
+    if (error && errorRetryCountRef.current >= 2) {
       return;
     }
 
@@ -39,10 +47,22 @@ export default function DoctorActivationPage() {
 
     if (needsFetch) {
       lastFetchRef.current = { page: currentPage, size: pageSize };
+      if (error) {
+        errorRetryCountRef.current += 1;
+      } else {
+        errorRetryCountRef.current = 0;
+      }
       dispatch(fetchPendingDoctors({ page: currentPage, size: pageSize }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize]); // Only depend on page/pageSize, check loading inside
+
+  // Reset error retry count when error is cleared
+  useEffect(() => {
+    if (!error) {
+      errorRetryCountRef.current = 0;
+    }
+  }, [error]);
 
   // Filter doctors
   const filteredDoctors = useMemo(() => {
@@ -233,6 +253,38 @@ export default function DoctorActivationPage() {
           </p>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Error loading pending doctors</p>
+              <p className="text-xs text-red-600 mt-1">{error}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                dispatch(clearError());
+                errorRetryCountRef.current = 0;
+                lastFetchRef.current = { page: null, size: null };
+                dispatch(fetchPendingDoctors({ page: currentPage, size: pageSize }));
+              }}
+              className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => dispatch(clearError())}
+              className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-xl soft-shadow-lg p-4">

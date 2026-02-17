@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   fetchAllDepartments,
@@ -9,16 +9,17 @@ import {
   toggleDepartmentStatus,
   deleteDepartment,
   setFilters,
+  clearError,
 } from '@/store/slices/departmentsSlice';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Table from '@/components/Table';
-import { Plus, Edit, Trash2, Power, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, Search, Filter, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function DepartmentsPage() {
   const dispatch = useAppDispatch();
-  const { departments, loading, filters } = useAppSelector((state) => state.departments);
+  const { departments, loading, error } = useAppSelector((state) => state.departments);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false);
@@ -28,13 +29,39 @@ export default function DepartmentsPage() {
     description: '',
     isActive: true,
   });
+  const hasFetchedRef = useRef(false);
+  const errorRetryCountRef = useRef(0);
 
   useEffect(() => {
-    // Only fetch if we don't have data and not currently loading
-    if (departments.length === 0 && !loading) {
+    // Don't fetch if already fetched or loading
+    if (hasFetchedRef.current || loading) {
+      return;
+    }
+
+    // Don't retry if there's an error (prevents infinite loops)
+    // Allow retry only if error retry count is less than 2
+    if (error && errorRetryCountRef.current >= 2) {
+      return;
+    }
+
+    // Only fetch if we don't have data
+    if (departments.length === 0) {
+      hasFetchedRef.current = true;
+      if (error) {
+        errorRetryCountRef.current += 1;
+      } else {
+        errorRetryCountRef.current = 0;
+      }
       dispatch(fetchAllDepartments());
     }
-  }, [dispatch, departments.length, loading]);
+  }, [dispatch, departments.length, loading, error]);
+
+  // Reset fetch flag and error retry when error is cleared
+  useEffect(() => {
+    if (!error) {
+      errorRetryCountRef.current = 0;
+    }
+  }, [error]);
 
   // Filter departments
   const filteredDepartments = useMemo(() => {
@@ -107,6 +134,7 @@ export default function DepartmentsPage() {
       handleCloseModal();
       // Refetch only if not already loading
       if (!loading) {
+        hasFetchedRef.current = false; // Reset to allow refetch
         dispatch(fetchAllDepartments());
       }
     } catch (error) {
@@ -124,6 +152,7 @@ export default function DepartmentsPage() {
       setSelectedDepartment(null);
       // Refetch only if not already loading
       if (!loading) {
+        hasFetchedRef.current = false; // Reset to allow refetch
         dispatch(fetchAllDepartments());
       }
     } catch (error) {
@@ -139,6 +168,7 @@ export default function DepartmentsPage() {
       setSelectedDepartment(null);
       // Refetch only if not already loading
       if (!loading) {
+        hasFetchedRef.current = false; // Reset to allow refetch
         dispatch(fetchAllDepartments());
       }
     } catch (error) {
@@ -242,6 +272,38 @@ export default function DepartmentsPage() {
           <span>Add Department</span>
         </button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Error loading departments</p>
+              <p className="text-xs text-red-600 mt-1">{error}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                dispatch(clearError());
+                errorRetryCountRef.current = 0;
+                hasFetchedRef.current = false;
+                dispatch(fetchAllDepartments());
+              }}
+              className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => dispatch(clearError())}
+              className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-xl soft-shadow-lg p-4">
