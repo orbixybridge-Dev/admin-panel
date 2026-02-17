@@ -49,12 +49,12 @@ export const approveDoctor = createAsyncThunk(
   }
 );
 
-// Reject doctor
+// Reject doctor application
 export const rejectDoctor = createAsyncThunk(
   'doctorVerification/reject',
   async (doctorId, { rejectWithValue }) => {
     try {
-      const response = await doctorsApi.rejectDoctor(doctorId);
+      const response = await doctorsApi.rejectDoctorApplication(doctorId);
       return response.data?.data || response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to reject doctor');
