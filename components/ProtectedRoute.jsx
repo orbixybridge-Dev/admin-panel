@@ -32,18 +32,30 @@ export default function ProtectedRoute({ children }) {
           setValidating(false);
         })
         .catch(() => {
+          // Silently handle any errors
           setValidating(false);
         });
     } else {
       hasValidatedRef.current = true;
-      dispatch(checkAuth());
+      try {
+        dispatch(checkAuth());
+      } catch (error) {
+        // Silently handle errors
+      }
       setValidating(false);
     }
   }, [dispatch]);
 
   useEffect(() => {
     if (mounted && !validating && !loading && !isAuthenticated) {
-      router.push('/login');
+      try {
+        router.push('/login');
+      } catch (error) {
+        // Silently handle navigation errors
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      }
     }
   }, [isAuthenticated, loading, mounted, validating, router]);
 

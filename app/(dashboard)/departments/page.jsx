@@ -30,6 +30,7 @@ export default function DepartmentsPage() {
   });
   const hasFetchedRef = useRef(false);
   const errorRetryCountRef = useRef(0);
+  const lastErrorRef = useRef(null);
 
   useEffect(() => {
     // Don't fetch if already fetched or loading
@@ -54,9 +55,10 @@ export default function DepartmentsPage() {
     }
   }, [dispatch, departments.length, loading, error]);
 
-  // Show error toast when error occurs
+  // Show error toast when error occurs (only once per error)
   useEffect(() => {
-    if (error && typeof error === 'string') {
+    if (error && typeof error === 'string' && lastErrorRef.current !== error) {
+      lastErrorRef.current = error;
       toast.error(error);
     }
   }, [error]);

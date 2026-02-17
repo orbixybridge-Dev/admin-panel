@@ -32,6 +32,7 @@ export const updateQualification = async (qualificationId, qualificationData) =>
   return response;
 };
 
+
 /**
  * Toggle qualification active/inactive status (ADMIN only)
  */

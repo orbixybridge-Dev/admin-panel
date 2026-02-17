@@ -25,6 +25,7 @@ export default function DoctorActivationPage() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const lastFetchRef = useRef({ page: null, size: null });
   const errorRetryCountRef = useRef(0);
+  const lastErrorRef = useRef(null);
 
   // Fetch data - only when page/pageSize actually changes
   useEffect(() => {
@@ -56,9 +57,10 @@ export default function DoctorActivationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize]); // Only depend on page/pageSize, check loading inside
 
-  // Show error toast when error occurs
+  // Show error toast when error occurs (only once per error)
   useEffect(() => {
-    if (error && typeof error === 'string') {
+    if (error && typeof error === 'string' && lastErrorRef.current !== error) {
+      lastErrorRef.current = error;
       toast.error(error);
     }
   }, [error]);
