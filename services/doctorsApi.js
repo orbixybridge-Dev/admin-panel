@@ -47,3 +47,15 @@ export const blockDoctor = async (doctorId) => {
   const response = await api.put(`/doctor/${doctorId}/block`);
   return response;
 };
+
+/**
+ * Get all rejected doctor applications (ADMIN only)
+ * @param {number} page - Page number (default: 0)
+ * @param {number} size - Page size (default: 10)
+ */
+export const getRejectedApplications = async (page = 0, size = 10) => {
+  const response = await api.get('/doctor/rejected-applications', {
+    params: { page, size },
+  });
+  return response;
+};

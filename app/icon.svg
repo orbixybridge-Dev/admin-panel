@@ -1,0 +1,17 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
+  <!-- Stethoscope Icon -->
+  <path d="M11 8C11 7.44772 11.4477 7 12 7H20C20.5523 7 21 7.44772 21 8V10C21 10.5523 20.5523 11 20 11H12C11.4477 11 11 10.5523 11 10V8Z" fill="white"/>
+  <path d="M12 11C11.4477 11 11 11.4477 11 12V16C11 16.5523 11.4477 17 12 17C12.5523 17 13 16.5523 13 16V12C13 11.4477 12.5523 11 12 11Z" fill="white"/>
+  <path d="M20 11C19.4477 11 19 11.4477 19 12V16C19 16.5523 19.4477 17 20 17C20.5523 17 21 16.5523 21 16V12C21 11.4477 20.5523 11 20 11Z" fill="white"/>
+  <path d="M10 18C9.44772 18 9 18.4477 9 19V20C9 20.5523 9.44772 21 10 21H22C22.5523 21 23 20.5523 23 20V19C23 18.4477 22.5523 18 22 18H10Z" fill="white"/>
+  <circle cx="8" cy="23" r="2" fill="white"/>
+  <circle cx="24" cy="23" r="2" fill="white"/>
+  <path d="M8 23H24" stroke="white" stroke-width="2" stroke-linecap="round"/>
+</svg>

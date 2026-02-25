@@ -4,7 +4,7 @@ import React from 'react';
 
 export default function Table({ columns, data, className = '' }) {
   return (
-    <div className={`bg-white rounded-xl soft-shadow-lg overflow-hidden ${className}`}>
+    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gradient-to-r from-primary-50 to-purple-50">
